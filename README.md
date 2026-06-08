@@ -68,7 +68,7 @@ cd backend
 mvnw.cmd spring-boot:run     # Windows
 ```
 
-Vérifier : http://localhost:8080/api/templates
+Vérifier : http://localhost:9091/api/templates
 
 ---
 
