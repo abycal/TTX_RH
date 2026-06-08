@@ -1,4 +1,4 @@
-# 🏢 Tritux RH — Guide de démarrage
+#  Tritux RH — Guide de démarrage
 
 ## Structure du projet
 ```
@@ -9,7 +9,7 @@ tritux-rh/
 │   └── n8n-workflow-tritux.json  ← Workflow à importer dans n8n
 ├── templates/
 │   └── templateTritux_.docx  ← Template CV officiel
-├── backend/                  ← Spring Boot (port 8080)
+├── backend/                  ← Spring Boot (port 9091)
 ├── frontend/                 ← React + Tailwind (port 3000)
 └── python-service/           ← FastAPI + Docling (port 8001)
 ```
@@ -89,13 +89,13 @@ Ouvrir : http://localhost:3000
 ```
 [RH importe CV]
       ↓
-Spring Boot (port 8080)
+Spring Boot (port 9091)
       ↓
 Python/Docling (port 8001) — extrait le texte
       ↓
 n8n (port 5678) — construit le prompt
       ↓
-Gemini API (Google) — retourne JSON structuré
+Groq API (LLama) — retourne JSON structuré
       ↓
 Python valide (Pydantic)
       ↓
@@ -112,22 +112,12 @@ Python remplit templateTritux_.docx
 
 ---
 
-## Clés de configuration
-
-| Variable | Valeur | Fichier |
-|---|---|---|
-| Gemini API Key | AIzaSyCAqCIgvDZ6hDgg9yBXbvw9-RJgp63f94Q | `backend/src/main/resources/application.properties` |
-| PostgreSQL password | Tritux@2025! | `docker-compose.yml` |
-| n8n admin password | Tritux@2025! | `docker-compose.yml` |
-
----
-
 ## Ports utilisés
 
 | Service | Port |
 |---|---|
 | React Frontend | 3000 |
-| Spring Boot | 8080 |
+| Spring Boot | 9091 |
 | Python FastAPI | 8001 |
 | n8n | 5678 |
 | PostgreSQL | 5432 |
