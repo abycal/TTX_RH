@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import keycloak from '../../keycloak';
+import api from '../../services/api';
+import { getAvatarUrl } from '../pages/Parametres';
 
-// ── Logos PNG ──────────────────────────────────────────────────────────────
-// Sidebar étendue  → src/assets/logo-full.png   (ex: logo horizontal avec texte)
-// Sidebar réduite  → src/assets/logo-icon.png   (ex: icône carrée seule)
 import logoFull from '../assets/logo-full.png';
 import logoIcon from '../assets/logo-icon.png';
 
@@ -71,6 +71,16 @@ const navItems = [
       </svg>
     ),
   },
+  // ── Messagerie ────────────────────────────────────────────────────────────
+  {
+    path: '/messagerie',
+    label: 'Messagerie',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    ),
+  },
 ];
 
 const SIDEBAR_EXPANDED = 240;
@@ -79,6 +89,19 @@ const SIDEBAR_COLLAPSED = 64;
 export default function Layout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  const keycloakId = keycloak?.tokenParsed?.sub || '';
+
+  const fetchProfile = () => {
+    api.get('/profile').then(res => setProfile(res.data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchProfile();
+    window.addEventListener('tritux_profile_updated', fetchProfile);
+    return () => window.removeEventListener('tritux_profile_updated', fetchProfile);
+  }, []);
 
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
@@ -126,41 +149,26 @@ export default function Layout() {
             flexShrink: 0,
           }}
         >
-          {/* ── Logo étendu ── */}
           {!collapsed && (
             <NavLink to="/dashboard" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', minWidth: 0 }}>
               <img
                 src={logoFull}
                 alt="Tritux RH"
-                style={{
-                  height: '32px',       /* ajuste selon la hauteur souhaitée */
-                  width: 'auto',
-                  maxWidth: '160px',    /* évite que le logo déborde */
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
+                style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain', display: 'block' }}
               />
             </NavLink>
           )}
 
-          {/* ── Logo réduit ── */}
           {collapsed && (
             <NavLink to="/dashboard" style={{ textDecoration: 'none' }}>
               <img
                 src={logoIcon}
                 alt="Tritux RH"
-                style={{
-                  width: '32px',
-                  height: '26px',
-                  objectFit: 'contain',
-                  display: 'block',
-                  borderRadius: '12px',
-                }}
+                style={{ width: '32px', height: '26px', objectFit: 'contain', display: 'block', borderRadius: '12px' }}
               />
             </NavLink>
           )}
 
-          {/* Bouton réduire */}
           {!collapsed && (
             <button
               onClick={() => setCollapsed(true)}
@@ -181,7 +189,7 @@ export default function Layout() {
           )}
         </div>
 
-        {/* Expand button (collapsed state) */}
+        {/* Expand button */}
         {collapsed && (
           <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: '8px' }}>
             <button
@@ -264,24 +272,34 @@ export default function Layout() {
             transition: 'background 0.2s',
             flexShrink: 0,
           }}
-          title={collapsed ? 'RH Tritux — Responsable RH' : undefined}
+          title={collapsed ? (profile?.firstName || 'Profil') : undefined}
           onMouseEnter={e => e.currentTarget.style.background = 'hsl(var(--nav-active) / 0.4)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <div
-            style={{
-              width: 32, height: 32, borderRadius: '9999px', flexShrink: 0,
-              background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid hsl(var(--nav-active))',
-            }}
-          >
-            <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 700 }}>RH</span>
+          <div style={{
+            width: 32, height: 32, borderRadius: '9999px', flexShrink: 0,
+            background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid hsl(var(--nav-active))',
+            overflow: 'hidden',
+          }}>
+            {profile?.avatarPath
+              ? <img src={`${getAvatarUrl(keycloakId)}?t=${profile.updatedAt || ''}`} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: 700 }}>
+                  {`${profile?.firstName?.[0] || 'R'}${profile?.lastName?.[0] || 'H'}`.toUpperCase()}
+                </span>
+            }
           </div>
           {!collapsed && (
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, overflow: 'hidden' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(var(--nav-foreground))', whiteSpace: 'nowrap' }}>RH Tritux</span>
-              <span style={{ fontSize: '0.625rem', color: 'hsl(var(--nav-muted))', whiteSpace: 'nowrap' }}>Responsable RH</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'hsl(var(--nav-foreground))', whiteSpace: 'nowrap' }}>
+                {profile?.firstName && profile?.lastName
+                  ? `${profile.firstName} ${profile.lastName}`
+                  : 'RH Tritux'}
+              </span>
+              <span style={{ fontSize: '0.625rem', color: 'hsl(var(--nav-muted))', whiteSpace: 'nowrap' }}>
+                {profile?.role || 'Responsable RH'}
+              </span>
             </div>
           )}
         </NavLink>
@@ -317,12 +335,7 @@ export default function Layout() {
         </div>
 
         {/* Page content */}
-        <main
-          style={{
-            padding: '32px',
-            animation: 'fade-in 0.4s ease-out',
-          }}
-        >
+        <main style={{ padding: '32px', animation: 'fade-in 0.4s ease-out' }}>
           <Outlet />
         </main>
       </div>

@@ -31,6 +31,26 @@ const IconCheck = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+const IconVideo = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+  </svg>
+);
+const IconBuilding = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+  </svg>
+);
+const IconMail = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+const IconSpinner = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+    <path d="M21 12a9 9 0 11-6.219-8.56" />
+  </svg>
+);
 
 // ── Badge score ────────────────────────────────────────────────────────────────
 function ScoreBadge({ score }) {
@@ -93,36 +113,203 @@ function StatusBadge({ status, candidateId, onUpdate }) {
   );
 }
 
-// ── Modal confirmation générique ──────────────────────────────────────────────
-function ConfirmModal({ open, title, message, confirmLabel, danger, onConfirm, onCancel }) {
+// ── Modal confirmation suppression ────────────────────────────────────────────
+function DeleteModal({ open, candidate, onConfirm, onCancel }) {
   if (!open) return null;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div className="premium-card" style={{ width: '100%', maxWidth: '420px', padding: '28px 28px 24px' }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: '1rem', fontWeight: 700, color: danger ? 'hsl(var(--destructive))' : 'hsl(142 76% 28%)' }}>
-          {title}
+        <h3 style={{ margin: '0 0 8px', fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--destructive))' }}>
+          Supprimer ce candidat ?
         </h3>
         <p style={{ margin: '0 0 24px', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.5 }}>
-          {message}
+          Voulez-vous vraiment supprimer <strong>{candidate?.fullName}</strong> ? Cette action est irréversible.
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-          <button
-            onClick={onCancel}
-            style={{ padding: '8px 18px', borderRadius: '10px', border: '1px solid hsl(var(--border))', background: 'transparent', color: 'hsl(var(--foreground))', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}
-          >
+          <button onClick={onCancel} style={{ padding: '8px 18px', borderRadius: '10px', border: '1px solid hsl(var(--border))', background: 'transparent', color: 'hsl(var(--foreground))', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}>
             Annuler
           </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              padding: '8px 18px', borderRadius: '10px', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-              background: danger ? 'hsl(var(--destructive))' : 'hsl(142 76% 36%)',
-              color: '#fff',
-            }}
-          >
-            {confirmLabel}
+          <button onClick={onConfirm} style={{ padding: '8px 18px', borderRadius: '10px', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', background: 'hsl(var(--destructive))', color: '#fff' }}>
+            Supprimer
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal Approve — choix du type de meet ─────────────────────────────────────
+function ApproveModal({ open, candidate, onConfirm, onCancel }) {
+  const [meetType, setMeetType] = useState('online');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Reset à chaque ouverture
+  useEffect(() => {
+    if (open) { setMeetType('online'); setLoading(false); setDone(false); }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    try {
+      await onConfirm(candidate.id, meetType);
+      setDone(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div className="premium-card" style={{ width: '100%', maxWidth: '460px', padding: '32px' }}>
+
+        {done ? (
+          /* ── État succès ── */
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'hsl(142 76% 36% / 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="hsl(142 76% 28%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 700, color: 'hsl(142 76% 28%)' }}>
+              Convocation envoyée !
+            </h3>
+            <p style={{ margin: '0 0 24px', fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>
+              Un email de convocation avec le créneau d'entretien a été envoyé à <strong>{candidate?.email}</strong>.
+            </p>
+            <button onClick={onCancel} style={{ padding: '9px 24px', borderRadius: '9999px', border: 'none', background: 'hsl(var(--foreground))', color: 'hsl(var(--card))', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+              Fermer
+            </button>
+          </div>
+        ) : (
+          /* ── Formulaire de choix ── */
+          <>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>
+                  Approuver ce candidat
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.825rem', color: 'hsl(var(--muted-foreground))' }}>
+                  {candidate?.fullName} · {candidate?.email}
+                </p>
+              </div>
+              <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                <IconClose />
+              </button>
+            </div>
+
+            {/* Description */}
+            <div style={{ padding: '14px 16px', borderRadius: '12px', background: 'hsl(var(--muted) / 0.6)', marginBottom: '24px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <IconMail />
+              <p style={{ margin: 0, fontSize: '0.825rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.6 }}>
+                Le système va consulter votre agenda Google, trouver un créneau libre et envoyer automatiquement une convocation au candidat.
+              </p>
+            </div>
+
+            {/* Choix du type */}
+            <p style={{ margin: '0 0 12px', fontSize: '0.8rem', fontWeight: 600, color: 'hsl(var(--foreground))', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Type d'entretien
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+              {/* En ligne */}
+              <button
+                onClick={() => setMeetType('online')}
+                style={{
+                  padding: '18px 16px',
+                  borderRadius: '14px',
+                  border: meetType === 'online'
+                    ? '2px solid hsl(var(--primary))'
+                    : '2px solid hsl(var(--border))',
+                  background: meetType === 'online'
+                    ? 'hsl(var(--primary) / 0.08)'
+                    : 'hsl(var(--card))',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textAlign: 'center',
+                }}
+              >
+                <span style={{ color: meetType === 'online' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
+                  <IconVideo />
+                </span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: meetType === 'online' ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>
+                  En ligne
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.4 }}>
+                  Visioconférence<br />(lien envoyé par email)
+                </span>
+              </button>
+
+              {/* Sur place */}
+              <button
+                onClick={() => setMeetType('onsite')}
+                style={{
+                  padding: '18px 16px',
+                  borderRadius: '14px',
+                  border: meetType === 'onsite'
+                    ? '2px solid hsl(var(--primary))'
+                    : '2px solid hsl(var(--border))',
+                  background: meetType === 'onsite'
+                    ? 'hsl(var(--primary) / 0.08)'
+                    : 'hsl(var(--card))',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textAlign: 'center',
+                }}
+              >
+                <span style={{ color: meetType === 'onsite' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
+                  <IconBuilding />
+                </span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: meetType === 'onsite' ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>
+                  Sur place
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'hsl(var(--muted-foreground))', lineHeight: 1.4 }}>
+                  Bureaux Tritux<br />Tunis, Tunisie
+                </span>
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={onCancel}
+                disabled={loading}
+                style={{ padding: '9px 20px', borderRadius: '9999px', border: '1px solid hsl(var(--border))', background: 'transparent', color: 'hsl(var(--foreground))', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                style={{
+                  padding: '9px 24px', borderRadius: '9999px', border: 'none',
+                  background: loading ? 'hsl(var(--muted))' : 'hsl(142 76% 36%)',
+                  color: loading ? 'hsl(var(--muted-foreground))' : '#fff',
+                  fontSize: '0.85rem', fontWeight: 600,
+                  cursor: loading ? 'wait' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {loading ? (
+                  <><IconSpinner /> Envoi en cours…</>
+                ) : (
+                  <><IconCheck /> Confirmer & Envoyer</>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -134,13 +321,11 @@ function CVModal({ candidate, onClose }) {
   const [trituxLoading, setTrituxLoading] = useState(false);
   const [trituxUrl, setTrituxUrl] = useState(null);
   const [trituxError, setTrituxError] = useState('');
-  // ── AJOUT : blob PDF pour l'iframe ──
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(true);
 
   const originalUrl = `http://localhost:9091/api/candidats-externes/${candidate.id}/cv`;
 
-  // ── AJOUT : chargement PDF avec token JWT ──
   useEffect(() => {
     let blobUrl = null;
     const loadPdf = async () => {
@@ -168,7 +353,6 @@ function CVModal({ candidate, onClose }) {
     setTrituxLoading(true);
     setTrituxError('');
     try {
-      // ── MODIFIÉ : fetch avec token JWT ──
       const cvRes = await fetch(originalUrl, {
         headers: { Authorization: `Bearer ${keycloak.token}` },
       });
@@ -226,7 +410,6 @@ function CVModal({ candidate, onClose }) {
               {trituxError}
             </div>
           )}
-          {/* ── MODIFIÉ : blob URL au lieu de l'URL directe ── */}
           {mode === 'original' && (
             pdfLoading
               ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '70vh', color: 'hsl(var(--muted-foreground))' }}>Chargement du CV…</div>
@@ -234,7 +417,7 @@ function CVModal({ candidate, onClose }) {
           )}
           {mode === 'tritux' && trituxUrl && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '70vh', gap: '16px', color: 'hsl(var(--muted-foreground))' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', color: 'hsl(var(--primary))' }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div style={{ display: 'flex', justifyContent: 'center', color: 'hsl(var(--primary))' }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg></div>
               <p style={{ margin: 0, fontWeight: 600, color: 'hsl(var(--foreground))' }}>CV Tritux généré et téléchargé</p>
               <button
                 onClick={() => { const a = document.createElement('a'); a.href = trituxUrl; a.download = `CV_Tritux_${candidate.fullName.replace(/ /g, '_')}.docx`; a.click(); }}
@@ -265,29 +448,22 @@ export default function JobOfferDetail() {
 
   // Modals
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [approveTarget, setApproveTarget] = useState(null);
+  const [approveTarget, setApproveTarget] = useState(null);   // ← candidat à approuver
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    // Offre — critique
     try {
       const offerRes = await api.get(`/job-offers/${id}`);
       setOffer(offerRes.data);
     } catch (e) {
       const status = e?.response?.status;
-      if (status === 404) {
-        setError(`Offre introuvable (id: ${id}).`);
-      } else {
-        setError(`Impossible de joindre Spring Boot (port 9091). ${e?.message || ''}`);
-      }
+      if (status === 404) setError(`Offre introuvable (id: ${id}).`);
+      else setError(`Impossible de joindre Spring Boot (port 9091). ${e?.message || ''}`);
       setLoading(false);
       return;
     }
 
-    // Candidats — non critique
     try {
-      // Endpoint : GET /api/candidats-externes/offre/{jobOfferId}
-      // Retourne déjà trié par score DESC (findByJobOfferIdOrderByScoreDesc)
       const candidatesRes = await api.get(`/candidats-externes/offre/${id}`);
       setAllCandidates(candidatesRes.data || []);
     } catch (e) {
@@ -313,7 +489,6 @@ export default function JobOfferDetail() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      // Endpoint : DELETE /api/candidats-externes/{id}  (à ajouter dans le controller)
       await api.delete(`/candidats-externes/${deleteTarget.id}`);
       setAllCandidates((prev) => prev.filter((c) => c.id !== deleteTarget.id));
     } catch {
@@ -323,12 +498,18 @@ export default function JobOfferDetail() {
     }
   };
 
-  // Approuver : visuel seulement — workflow n8n à brancher plus tard
-  const handleApprove = () => {
-    if (!approveTarget) return;
-    // TODO: POST /api/candidats-externes/:id/approve → déclenche workflow n8n #3
-    console.log(`[TODO] Workflow n8n → approuver candidat ${approveTarget.id} (${approveTarget.fullName})`);
-    setApproveTarget(null);
+  /**
+   * Appelé par ApproveModal une fois le meetType choisi.
+   * Appelle POST /api/candidats-externes/{id}/approve
+   * Lève une exception si erreur (pour que la modal reste ouverte avec loading=false).
+   */
+  const handleApprove = async (candidateId, meetType) => {
+    const res = await api.post(`/candidats-externes/${candidateId}/approve`, { meetType });
+    // Mettre à jour le statut localement
+    setAllCandidates((prev) =>
+      prev.map((c) => c.id === candidateId ? { ...c, status: 'SHORTLISTED' } : c)
+    );
+    return res.data;
   };
 
   const handleLoadMore = async () => {
@@ -339,7 +520,6 @@ export default function JobOfferDetail() {
   };
 
   // ── Données dérivées ───────────────────────────────────────────────────────
-  // Les candidats sont déjà triés par score DESC par le backend
   const top5Ids = new Set(
     allCandidates
       .filter((c) => c.score !== null && c.score !== undefined)
@@ -376,21 +556,17 @@ export default function JobOfferDetail() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* ── Modals ── */}
-      <ConfirmModal
+      <DeleteModal
         open={!!deleteTarget}
-        title="Supprimer ce candidat ?"
-        message={`Voulez-vous vraiment supprimer ${deleteTarget?.fullName} ? Cette action est irréversible.`}
-        confirmLabel="Supprimer"
-        danger
+        candidate={deleteTarget}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-      <ConfirmModal
+
+      {/* Nouvelle modal Approve avec choix du type de meet */}
+      <ApproveModal
         open={!!approveTarget}
-        title="Approuver ce candidat ?"
-        message={`Un email personnalisé sera envoyé à ${approveTarget?.fullName} (${approveTarget?.email}) via le workflow n8n dès que cette fonctionnalité sera activée.`}
-        confirmLabel="Approuver"
-        danger={false}
+        candidate={approveTarget}
         onConfirm={handleApprove}
         onCancel={() => setApproveTarget(null)}
       />
@@ -413,7 +589,7 @@ export default function JobOfferDetail() {
               {offer.location && <span style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:"3px"}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> {offer.location}</span>}
               {offer.typeFr && <span style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:"3px"}}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> {offer.typeFr}</span>}
               {offer.experienceFr && <span style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:"3px"}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {offer.experienceFr}</span>}
-              {offer.departmentFr && <span style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:"3px"}}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> {offer.departmentFr}</span>}
+              {offer.departmentFr && <span style={{ fontSize: '0.85rem', color: 'hsl(var(--muted-foreground))' }}>{offer.departmentFr}</span>}
             </div>
           </div>
           <span className={`status-badge ${offer.active ? 'status-new' : 'status-completed'}`}>
@@ -535,10 +711,10 @@ export default function JobOfferDetail() {
                         {/* Actions */}
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {/* Approuver */}
+                            {/* Approuver — ouvre la modal meetType */}
                             <button
                               onClick={() => setApproveTarget(c)}
-                              title="Approuver ce candidat"
+                              title="Approuver et convoquer ce candidat"
                               style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '5px',
                                 padding: '5px 12px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
@@ -579,7 +755,7 @@ export default function JobOfferDetail() {
               </table>
             </div>
 
-            {/* Footer : compteur + Load more */}
+            {/* Footer */}
             <div style={{ padding: '16px 24px', borderTop: '1px solid hsl(var(--border))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'hsl(var(--muted) / 0.3)' }}>
               <span style={{ fontSize: '0.78rem', color: 'hsl(var(--muted-foreground))' }}>
                 Affichage de{' '}
@@ -625,6 +801,8 @@ export default function JobOfferDetail() {
       {selectedCandidate && (
         <CVModal candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
       )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

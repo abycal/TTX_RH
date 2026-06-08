@@ -3,7 +3,9 @@ package com.tritux.rh.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tritux.rh.model.CandidateExterne;
+import com.tritux.rh.model.GoogleCalendarToken;
 import com.tritux.rh.repository.CandidateExterneRepository;
+import com.tritux.rh.repository.GoogleCalendarTokenRepository;
 import com.tritux.rh.repository.JobOfferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +20,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -28,6 +33,7 @@ public class CandidateExterneService {
 
     private final CandidateExterneRepository candidateExterneRepository;
     private final JobOfferRepository jobOfferRepository;
+    private final GoogleCalendarTokenRepository googleCalendarTokenRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
 
@@ -36,6 +42,9 @@ public class CandidateExterneService {
 
     @Value("${uploads.externes.dir}")
     private String uploadsExternesDir;
+
+    @Value("${n8n.interview.webhook.url}")
+    private String n8nInterviewWebhookUrl;
 
     /**
      * Point d'entrée principal : reçoit la candidature depuis le site web,
@@ -81,6 +90,102 @@ public class CandidateExterneService {
     }
 
     /**
+     * Approuver un candidat externe :
+     * - change son statut en SHORTLISTED
+     * - récupère le token Google Calendar du RH
+     * - déclenche le workflow n8n 5 (scheduler + email)
+     *
+     * @param candidateId  UUID du candidat
+     * @param meetType     "online" | "onsite"
+     * @param rhEmail      email du RH connecté (depuis JWT Keycloak)
+     */
+    public CandidateExterne approve(UUID candidateId, String meetType, String rhEmail) {
+        // 1. Récupérer le candidat
+        CandidateExterne candidate = getById(candidateId);
+
+        // 2. Récupérer le titre du poste
+        String jobTitle = "Poste Tritux";
+        try {
+            var offer = jobOfferRepository.findById(candidate.getJobOfferId());
+            if (offer.isPresent()) {
+                jobTitle = offer.get().getTitleFr();
+            }
+        } catch (Exception e) {
+            log.warn("[Approve] Impossible de récupérer l'offre: {}", e.getMessage());
+        }
+
+        // 3. Récupérer le token Google Calendar du RH
+        String accessToken = "";
+        try {
+            var tokenOpt = googleCalendarTokenRepository.findByEmail(rhEmail);
+            if (tokenOpt.isPresent()) {
+                GoogleCalendarToken token = tokenOpt.get();
+                // Vérifier si le token est encore valide (avec 60s de marge)
+                if (token.getExpiresAt() != null &&
+                    Instant.now().isBefore(token.getExpiresAt().minusSeconds(60))) {
+                    accessToken = token.getAccessToken();
+                } else {
+                    log.warn("[Approve] Token Google expiré pour {}. Le calendrier sera ignoré.", rhEmail);
+                }
+            } else {
+                log.warn("[Approve] Aucun token Google Calendar pour {}. Le calendrier sera ignoré.", rhEmail);
+            }
+        } catch (Exception e) {
+            log.warn("[Approve] Erreur récupération token Google: {}", e.getMessage());
+        }
+
+        // 4. Mettre à jour le statut
+        candidate.setStatus("SHORTLISTED");
+        CandidateExterne saved = candidateExterneRepository.save(candidate);
+
+        // 5. Déclencher le workflow n8n en arrière-plan (non bloquant)
+        final String finalJobTitle = jobTitle;
+        final String finalAccessToken = accessToken;
+        new Thread(() -> triggerInterviewScheduler(
+                candidate, finalJobTitle, meetType, rhEmail, finalAccessToken
+        )).start();
+
+        return saved;
+    }
+
+    /**
+     * Appelle le webhook n8n du Workflow 5 pour planifier l'entretien et envoyer l'email.
+     */
+    private void triggerInterviewScheduler(
+            CandidateExterne candidate,
+            String jobTitle,
+            String meetType,
+            String rhEmail,
+            String accessToken) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("candidateId",    candidate.getId().toString());
+            payload.put("candidateName",  candidate.getFullName());
+            payload.put("candidateEmail", candidate.getEmail());
+            payload.put("jobTitle",       jobTitle);
+            payload.put("meetType",       meetType);
+            payload.put("rhEmail",        rhEmail);
+            payload.put("accessToken",    accessToken);
+
+            WebClient client = webClientBuilder.baseUrl(n8nInterviewWebhookUrl).build();
+
+            String response = client.post()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(objectMapper.writeValueAsString(payload))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            log.info("[Approve] Workflow n8n 5 déclenché pour candidat {} — réponse: {}",
+                    candidate.getId(), response);
+
+        } catch (Exception e) {
+            log.error("[Approve] Erreur déclenchement workflow n8n 5 pour {}: {}",
+                    candidate.getId(), e.getMessage());
+        }
+    }
+
+    /**
      * Appelle FastAPI POST /api/extract-and-score (extraction texte + appel n8n
      * Groq).
      * FastAPI orchestre tout et retourne { candidate_id, score, scoringDetails }.
@@ -120,8 +225,6 @@ public class CandidateExterneService {
     /**
      * Envoie le fichier PDF à FastAPI /api/extract-and-score avec les infos de
      * l'offre.
-     * FastAPI extrait le texte, appelle n8n/Groq, et retourne le score.
-     * Spring Boot met ensuite à jour le candidat en base.
      */
     private void callExtractAndScore(UUID candidateId, byte[] fileBytes, String originalFilename, String jobTitle,
             String jobDescription) {
@@ -209,5 +312,4 @@ public class CandidateExterneService {
         candidateExterneRepository.deleteById(id);
         log.info("[CandidateExterneService] Candidat {} supprimé", id);
     }
-
 }

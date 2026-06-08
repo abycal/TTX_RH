@@ -8,6 +8,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -89,6 +91,48 @@ public class CandidateExterneController {
     }
 
     /**
+     * POST /api/candidats-externes/{id}/approve
+     *
+     * Approuve un candidat et déclenche le Workflow 5 (n8n) :
+     *   1. Lit l'agenda Google du RH connecté
+     *   2. Groq choisit un créneau libre
+     *   3. Envoie un email HTML au candidat avec la convocation
+     *
+     * Body JSON : { "meetType": "online" | "onsite" }
+     */
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<Map<String, Object>> approve(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        String meetType = body.getOrDefault("meetType", "online");
+        if (!meetType.equals("online") && !meetType.equals("onsite")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "meetType doit être 'online' ou 'onsite'"
+            ));
+        }
+
+        // Récupérer l'email du RH depuis le JWT Keycloak
+        String rhEmail = jwt.getClaimAsString("email");
+        if (rhEmail == null || rhEmail.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Email RH introuvable dans le token JWT"
+            ));
+        }
+
+        CandidateExterne updated = candidateExterneService.approve(id, meetType, rhEmail);
+
+        return ResponseEntity.ok(Map.of(
+                "success",     true,
+                "candidateId", updated.getId().toString(),
+                "status",      updated.getStatus(),
+                "meetType",    meetType,
+                "message",     "Candidat approuvé — email de convocation en cours d'envoi"
+        ));
+    }
+
+    /**
      * DELETE /api/candidats-externes/{id}
      * Supprime un candidat et son fichier CV du disque.
      */
@@ -97,14 +141,4 @@ public class CandidateExterneController {
         candidateExterneService.delete(id);
         return ResponseEntity.noContent().build();
     }
-
-    // ── TODO : workflow n8n #3 ────────────────────────────────────────────────
-    // POST /api/candidats-externes/{id}/approve
-    // À activer quand le workflow d'envoi d'email personnalisé sera prêt.
-    //
-    // @PostMapping("/{id}/approve")
-    // public ResponseEntity<Void> approve(@PathVariable UUID id) {
-    //     candidateExterneService.approve(id);
-    //     return ResponseEntity.ok().build();
-    // }
 }

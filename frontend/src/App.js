@@ -12,10 +12,9 @@ import JobOffers from './components/pages/JobOffers';
 import JobOfferDetail from './components/pages/JobOfferDetail';
 import Agenda from './components/pages/Agenda';
 import GoogleCallback from './components/pages/GoogleCallback';
+import Parametres from './components/pages/Parametres';
+import Messagerie from './components/pages/Messagerie';
 
-// ─── Détection IMMÉDIATE avant tout — avant Keycloak, avant React Router ──────
-// Si on est sur /google-callback, on court-circuite tout et on rend juste
-// le composant GoogleCallback sans initialiser Keycloak en mode login-required.
 const IS_GOOGLE_CALLBACK = window.location.pathname === '/google-callback';
 
 let keycloakInitialized = false;
@@ -25,10 +24,7 @@ export default function App() {
   const [loading, setLoading] = useState(!IS_GOOGLE_CALLBACK);
 
   useEffect(() => {
-    // Sur la page callback Google → on n'initialise PAS Keycloak
-    // Il intercepterait le ?code= de Google et planterait avec "Invalid redirect uri"
     if (IS_GOOGLE_CALLBACK) return;
-
     if (keycloakInitialized) return;
     keycloakInitialized = true;
 
@@ -37,6 +33,7 @@ export default function App() {
         onLoad: 'login-required',
         checkLoginIframe: false,
         pkceMethod: 'S256',
+        redirectUri: 'http://localhost:3000/'
       })
       .then((auth) => {
         setAuthenticated(auth);
@@ -53,7 +50,6 @@ export default function App() {
       });
   }, []);
 
-  // ── Page callback Google : rendu immédiat, sans Keycloak ──────────────────
   if (IS_GOOGLE_CALLBACK) {
     return (
       <BrowserRouter>
@@ -64,7 +60,6 @@ export default function App() {
     );
   }
 
-  // ── Chargement Keycloak ───────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{
@@ -81,7 +76,6 @@ export default function App() {
     return null;
   }
 
-  // ── App principale ────────────────────────────────────────────────────────
   return (
     <BrowserRouter>
       <Routes>
@@ -96,7 +90,8 @@ export default function App() {
           <Route path="offres" element={<JobOffers />} />
           <Route path="offres/:id" element={<JobOfferDetail />} />
           <Route path="agenda" element={<Agenda />} />
-          <Route path="parametres" element={<ComingSoon title="Paramètres" />} />
+          <Route path="parametres" element={<Parametres />} />
+          <Route path="messagerie" element={<Messagerie />} />
         </Route>
       </Routes>
     </BrowserRouter>

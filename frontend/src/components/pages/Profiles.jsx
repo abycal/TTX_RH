@@ -160,7 +160,7 @@ export default function Profiles() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'hsl(var(--muted) / 0.5)' }}>
-              {['Candidat', 'Email', 'Date import', 'Statut', 'Actions'].map(h => (
+              {['Candidat', 'Date import', 'Statut', 'Actions'].map(h => (
                 <th key={h} style={{
                   textAlign: 'left', padding: '12px 24px',
                   fontSize: '0.6875rem', fontWeight: 600,
@@ -208,9 +208,7 @@ export default function Profiles() {
                       <span style={{ fontWeight: 500, color: 'hsl(var(--foreground))' }}>{c.nom}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '14px 24px', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
-                    {c.email || '—'}
-                  </td>
+              
                   <td style={{ padding: '14px 24px', color: 'hsl(var(--muted-foreground))', fontSize: '0.875rem' }}>
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '—'}
                   </td>

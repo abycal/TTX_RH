@@ -38,3 +38,11 @@ CREATE TABLE IF NOT EXISTS transformations (
 INSERT INTO templates (name, description, file_path)
 VALUES ('Template Tritux', 'Template officiel Tritux', 'templates/templateTritux_.docx')
 ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS user_profiles (
+    keycloak_id  VARCHAR(255) PRIMARY KEY,   -- sub du JWT Keycloak
+    first_name   VARCHAR(255),
+    last_name    VARCHAR(255),
+    role         VARCHAR(255) DEFAULT 'Responsable RH',
+    avatar_path  VARCHAR(500),
+    updated_at   TIMESTAMP DEFAULT NOW()
+);

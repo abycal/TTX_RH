@@ -26,11 +26,20 @@ public class SecurityConfig {
                 // ── Routes publiques (site web Tritux, sans token) ────────
                 .requestMatchers(HttpMethod.GET,  "/api/job-offers").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/job-offers/**").permitAll()
-                // ✅ Soumission candidature + CV depuis le site public
                 .requestMatchers(HttpMethod.POST, "/api/candidats-externes/apply").permitAll()
 
                 // ── Callback Google OAuth2 ────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/api/calendar/oauth/callback").permitAll()
+
+                // ── Avatars publics (utilisés dans <img src> sans token) ──
+                .requestMatchers(HttpMethod.GET,  "/api/profile/avatar/**").permitAll()
+
+                // ── Fichiers chat publics (images/fichiers dans le chat) ──
+                .requestMatchers(HttpMethod.GET,  "/api/chat/files/**").permitAll()
+
+                // ── SSE chat : nécessite auth mais pas de Bearer classique ─
+                // Spring gère correctement le token via le query param ?token ou header
+                .requestMatchers("/api/chat/stream").authenticated()
 
                 // ── Routes protégées (Studio RH interne) ─────────────────
                 .requestMatchers("/api/candidats-externes/*/cv").authenticated()

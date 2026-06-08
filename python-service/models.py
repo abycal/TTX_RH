@@ -78,7 +78,7 @@ class CandidateProfile(BaseModel):
         return []
 
 
-# Schéma JSON pour le prompt Gemini (utilisé dans n8n)
+# Schéma JSON pour le prompt Groq (utilisé dans n8n)
 GEMINI_JSON_SCHEMA = {
     "nom_candidat": "string - Prénom et Nom complet",
     "title": "string - Titre / Poste actuel ou souhaité",
